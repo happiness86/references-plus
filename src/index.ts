@@ -1,7 +1,6 @@
 import { log } from 'node:console'
-import { commands, extensions, window } from 'vscode'
+import { commands, window } from 'vscode'
 import type { ExtensionContext, Location, Range } from 'vscode'
-import * as vscode from 'vscode'
 import { EXT_ID } from './constants'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History } from './types'
