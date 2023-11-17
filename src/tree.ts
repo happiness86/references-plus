@@ -1,4 +1,5 @@
-import type { Event, Range, TreeDataProvider } from 'vscode'
+import * as path from 'node:path'
+import type { Event, Location, Range, TreeDataProvider, TreeItemLabel } from 'vscode'
 import { EventEmitter, TreeItem, TreeItemCollapsibleState, window, workspace } from 'vscode'
 import type { History } from './types'
 
@@ -19,21 +20,24 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
   }
 
   async getChildren(element?: ReferenceItem | undefined) {
+    if (!this.referenceData.size)
+      return
     if (element) {
-      if (!element.range.length)
-        return []
+      if (!element.loc.length)
+        return
       const contents = []
-      for (const r of element.range) {
+      const range = element.loc.map(item => item.range)
+      for (const r of range) {
         // const text = window.activeTextEditor?.document.getText(r) || ''
         let text = ''
-        if (element.label !== window.activeTextEditor?.document.uri.path) {
-          const document = await workspace.openTextDocument(element.label)
+        if (element.filePath !== window.activeTextEditor?.document.uri.path) {
+          const document = await workspace.openTextDocument(element.filePath)
           text = document.lineAt(r.start.line).text || ''
         }
         else {
           text = window.activeTextEditor?.document.lineAt(r.start.line).text || ''
         }
-        contents.push(new ReferenceItem(text, [], TreeItemCollapsibleState.Collapsed))
+        contents.push(new ReferenceItem({ label: text, highlights: [[r.start.character, r.end.character]] }, '', [], '', TreeItemCollapsibleState.None))
       }
 
       return contents
@@ -41,9 +45,12 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
     else {
       const result = []
       for (const [, referenceDataMap] of this.referenceData) {
-        for (const [path, range] of referenceDataMap) {
+        for (const [filePath, loc] of referenceDataMap) {
+          const basename = path.basename(filePath)
+          const prefix = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path || ''
+          const description = filePath.split(prefix)[1].split(basename)[0].slice(0, -1)
           result.push(
-            new ReferenceItem(path, range, TreeItemCollapsibleState.Expanded),
+            new ReferenceItem({ label: basename }, description, loc, filePath, TreeItemCollapsibleState.Expanded),
           )
         }
       }
@@ -55,8 +62,10 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
 
 class ReferenceItem extends TreeItem {
   constructor(
-    public readonly label: string,
-    public readonly range: Range[],
+    public readonly label: TreeItemLabel,
+    public readonly description: string,
+    public readonly loc: Location[],
+    public readonly filePath: string,
     public readonly collapsibleState: TreeItemCollapsibleState,
   ) {
     super (label, collapsibleState)

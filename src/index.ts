@@ -1,9 +1,9 @@
 import { log } from 'node:console'
 import { commands, window } from 'vscode'
-import type { ExtensionContext, Location, Range } from 'vscode'
+import type { ExtensionContext, Location } from 'vscode'
 import { EXT_ID } from './constants'
 import { ReferencesPlusTreeDataProvider } from './tree'
-import type { History } from './types'
+import type { History, ReferenceData } from './types'
 
 const MAX_INDEX = 10
 
@@ -21,14 +21,16 @@ export function activate(ext: ExtensionContext) {
 
       commands.executeCommand('vscode.executeReferenceProvider', window.activeTextEditor.document.uri, window.activeTextEditor.selection.active).then((res: any) => {
         const locations = res as Location[]
-        const referenceDataMap: Map<string, Range[]> = new Map()
+
+        log('res', locations)
+        const referenceDataMap: ReferenceData = new Map()
         locations.forEach((item) => {
           const cache = referenceDataMap.get(item.uri.path)
           if (referenceDataMap.get(item.uri.path))
-            cache?.push(item.range)
+            cache?.push(item)
 
           else
-            referenceDataMap.set(item.uri.path, [item.range])
+            referenceDataMap.set(item.uri.path, [item])
         })
         if (index < MAX_INDEX) {
           history.set(index, referenceDataMap)
