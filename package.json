@@ -1,24 +1,20 @@
 {
-  "publisher": "",
+  "publisher": "happiness86",
   "name": "vscode-references-plus",
   "displayName": "References Plus",
   "version": "0.0.1",
   "private": true,
   "packageManager": "pnpm@8.10.5",
   "description": "",
-  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "author": "happiness86",
   "license": "MIT",
-  "funding": "https://github.com/sponsors/antfu",
-  "homepage": "https://github.com/antfu/ext-name#readme",
+  "homepage": "https://github.com/happiness86/references-plus#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/antfu/ext-name"
+    "url": "https://github.com/happiness86/references-plus"
   },
   "bugs": {
-    "url": "https://github.com/antfu/ext-name/issues"
-  },
-  "sponsor": {
-    "url": "https://github.com/sponsors/antfu"
+    "url": "https://github.com/happiness86/references-plus/issues"
   },
   "categories": [
     "Other"
