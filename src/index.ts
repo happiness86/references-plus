@@ -1,5 +1,5 @@
 import { log } from 'node:console'
-import { commands, window } from 'vscode'
+import { Selection, commands, window } from 'vscode'
 import type { ExtensionContext, Location } from 'vscode'
 import { EXT_ID } from './constants'
 import { ReferencesPlusTreeDataProvider } from './tree'
@@ -47,11 +47,22 @@ export function activate(ext: ExtensionContext) {
           history.delete(keys.next().value)
         }
 
-        commands.executeCommand('reference-plus.refresh')
+        commands.executeCommand(`${EXT_ID}.refresh`)
       })
     }),
-    commands.registerCommand('reference-plus.refresh', () =>
+    commands.registerCommand(`${EXT_ID}.refresh`, () =>
       rpTree.refresh()),
+    commands.registerCommand(`${EXT_ID}.selectNode`, async (loc: Location) => {
+      // const document = await workspace.openTextDocument(element[0].filePath)
+      // window.showTextDocument(document)
+      commands.executeCommand('vscode.open', loc.uri, {
+        selection: new Selection(loc.range.start, loc.range.end),
+      })
+    }),
+    commands.registerCommand(`${EXT_ID}.clear`, async () => {
+      history.clear()
+      commands.executeCommand(`${EXT_ID}.refresh`)
+    }),
   )
 }
 

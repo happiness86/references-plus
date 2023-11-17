@@ -38,7 +38,17 @@
       },
       {
         "command": "references-plus.refresh",
+        "title": "refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "references-plus.selectNode",
         "title": "refresh"
+      },
+      {
+        "command": "references-plus.clear",
+        "title": "clear",
+        "icon": "$(clear-all)"
       }
     ],
     "viewsContainers": {
@@ -66,7 +76,12 @@
       ],
       "view/title": [
         {
-          "command": "references-plus.refresh"
+          "command": "references-plus.refresh",
+          "group": "navigation@1"
+        },
+        {
+          "command": "references-plus.clear",
+          "group": "navigation@2"
         }
       ]
     }

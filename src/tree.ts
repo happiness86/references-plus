@@ -1,7 +1,8 @@
 import * as path from 'node:path'
-import type { Event, Location, TreeDataProvider, TreeItemLabel, Uri } from 'vscode'
+import type { Command, Event, Location, TreeDataProvider, TreeItemLabel, Uri } from 'vscode'
 import { EventEmitter, ThemeIcon, TreeItem, TreeItemCollapsibleState, window, workspace } from 'vscode'
 import type { History, ReferenceData } from './types'
+import { EXT_ID } from './constants'
 
 export class ReferencesPlusTreeDataProvider implements TreeDataProvider<ReferenceItem | ReferenceItemRoot> {
   constructor(public referenceData: History) {
@@ -46,7 +47,12 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
           else {
             text = window.activeTextEditor?.document.lineAt(r.start.line).text || ''
           }
-          contents.push(new ReferenceItem(l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, '', TreeItemCollapsibleState.None, ThemeIcon.File, [], '', undefined))
+          const command: Command = {
+            title: 'Open',
+            command: `${EXT_ID}.selectNode`,
+            arguments: [l],
+          }
+          contents.push(new ReferenceItem(l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, '', TreeItemCollapsibleState.None, ThemeIcon.File, command, [], '', undefined))
         }
       }
 
@@ -104,6 +110,7 @@ class ReferenceItem extends TreeItem {
        */
       dark: string | Uri
     } | ThemeIcon,
+    public command: Command,
     public readonly loc: Location[],
     public readonly filePath: string,
     public readonly referenceDataMap?: ReferenceData,
