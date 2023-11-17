@@ -34,8 +34,7 @@
     "commands": [
       {
         "command": "references-plus.getAllReferences",
-        "title": "References Plus",
-        "when": "editorHasSelection"
+        "title": "References Plus"
       },
       {
         "command": "references-plus.refresh",
@@ -62,8 +61,7 @@
     "menus": {
       "editor/context": [
         {
-          "command": "references-plus.getAllReferences",
-          "when": "editorHasSelection"
+          "command": "references-plus.getAllReferences"
         }
       ],
       "view/title": [

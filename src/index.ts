@@ -12,14 +12,19 @@ export function activate(ext: ExtensionContext) {
   const history: History = new Map()
 
   const rpTree = new ReferencesPlusTreeDataProvider(history)
-  window.registerTreeDataProvider('references-plus', rpTree)
+  // window.registerTreeDataProvider('references-plus', rpTree)
+  window.createTreeView('references-plus', {
+    treeDataProvider: rpTree,
+  })
 
   ext.subscriptions.push(
     commands.registerCommand(`${EXT_ID}.getAllReferences`, async () => {
       if (!window.activeTextEditor)
         return
 
-      commands.executeCommand('vscode.executeReferenceProvider', window.activeTextEditor.document.uri, window.activeTextEditor.selection.active).then((res: any) => {
+      commands.executeCommand('references-plus.focus')
+
+      commands.executeCommand('vscode.executeReferenceProvider', window.activeTextEditor.document.uri, window.activeTextEditor.selection.active).then(async (res: any) => {
         const locations = res as Location[]
 
         log('res', locations)
@@ -32,9 +37,14 @@ export function activate(ext: ExtensionContext) {
           else
             referenceDataMap.set(item.uri.path, [item])
         })
-        if (index < MAX_INDEX) {
-          history.set(index, referenceDataMap)
+        if (history.size < MAX_INDEX) {
+          // TODO  use selection as description
+          history.set({ index, text: '' }, referenceDataMap)
           index++
+        }
+        else {
+          const keys = history.keys()
+          history.delete(keys.next().value)
         }
 
         commands.executeCommand('reference-plus.refresh')

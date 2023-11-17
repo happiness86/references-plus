@@ -1,9 +1,9 @@
 import * as path from 'node:path'
-import type { Event, Location, Range, TreeDataProvider, TreeItemLabel } from 'vscode'
-import { EventEmitter, TreeItem, TreeItemCollapsibleState, window, workspace } from 'vscode'
-import type { History } from './types'
+import type { Event, Location, TreeDataProvider, TreeItemLabel, Uri } from 'vscode'
+import { EventEmitter, ThemeIcon, TreeItem, TreeItemCollapsibleState, window, workspace } from 'vscode'
+import type { History, ReferenceData } from './types'
 
-export class ReferencesPlusTreeDataProvider implements TreeDataProvider<ReferenceItem> {
+export class ReferencesPlusTreeDataProvider implements TreeDataProvider<ReferenceItem | ReferenceItemRoot> {
   constructor(public referenceData: History) {
   }
 
@@ -15,44 +15,49 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
     this._onDidChangeTreeData.fire()
   }
 
-  getTreeItem(element: ReferenceItem): TreeItem | Thenable<TreeItem> {
+  getTreeItem(element: ReferenceItem): ReferenceItem {
     return element
   }
 
-  async getChildren(element?: ReferenceItem | undefined) {
+  async getChildren(element?: ReferenceItem | ReferenceItemRoot | undefined) {
     if (!this.referenceData.size)
       return
     if (element) {
-      if (!element.loc.length)
-        return
       const contents = []
-      const range = element.loc.map(item => item.range)
-      for (const r of range) {
-        // const text = window.activeTextEditor?.document.getText(r) || ''
-        let text = ''
-        if (element.filePath !== window.activeTextEditor?.document.uri.path) {
-          const document = await workspace.openTextDocument(element.filePath)
-          text = document.lineAt(r.start.line).text || ''
+      if (element.referenceDataMap) {
+        for (const [filePath, loc] of element.referenceDataMap) {
+          const basename = path.basename(filePath)
+          const prefix = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path || ''
+          const description = filePath.split(prefix)[1].split(basename)[0].slice(0, -1)
+          contents.push(
+            new ReferenceItemRoot({ label: basename }, description, TreeItemCollapsibleState.Expanded, '', loc, filePath, undefined),
+          )
         }
-        else {
-          text = window.activeTextEditor?.document.lineAt(r.start.line).text || ''
+      }
+      else {
+        for (const l of element.loc) {
+          const r = l.range
+          // const text = window.activeTextEditor?.document.getText(r) || ''
+          let text = ''
+          if (element.filePath !== window.activeTextEditor?.document.uri.path) {
+            const document = await workspace.openTextDocument(element.filePath)
+            text = document.lineAt(r.start.line).text || ''
+          }
+          else {
+            text = window.activeTextEditor?.document.lineAt(r.start.line).text || ''
+          }
+          contents.push(new ReferenceItem(l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, '', TreeItemCollapsibleState.None, ThemeIcon.File, [], '', undefined))
         }
-        contents.push(new ReferenceItem({ label: text, highlights: [[r.start.character, r.end.character]] }, '', [], '', TreeItemCollapsibleState.None))
       }
 
       return contents
     }
     else {
       const result = []
-      for (const [, referenceDataMap] of this.referenceData) {
-        for (const [filePath, loc] of referenceDataMap) {
-          const basename = path.basename(filePath)
-          const prefix = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path || ''
-          const description = filePath.split(prefix)[1].split(basename)[0].slice(0, -1)
-          result.push(
-            new ReferenceItem({ label: basename }, description, loc, filePath, TreeItemCollapsibleState.Expanded),
-          )
-        }
+      for (const [key, referenceDataMap] of this.referenceData) {
+        result.push(
+          new ReferenceItemRoot({ label: `${key.index + 1}` }, key.text, TreeItemCollapsibleState.Expanded, ThemeIcon.Folder, [], '', referenceDataMap),
+        )
       }
 
       return result
@@ -60,14 +65,49 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
   }
 }
 
-class ReferenceItem extends TreeItem {
+class ReferenceItemRoot extends TreeItem {
   constructor(
     public readonly label: TreeItemLabel,
     public readonly description: string,
+    public readonly collapsibleState: TreeItemCollapsibleState,
+    public readonly iconPath: string | Uri | {
+      /**
+       * The icon path for the light theme.
+       */
+      light: string | Uri
+      /**
+       * The icon path for the dark theme.
+       */
+      dark: string | Uri
+    } | ThemeIcon,
     public readonly loc: Location[],
     public readonly filePath: string,
-    public readonly collapsibleState: TreeItemCollapsibleState,
+    public readonly referenceDataMap?: ReferenceData,
   ) {
     super (label, collapsibleState)
+  }
+}
+
+class ReferenceItem extends TreeItem {
+  constructor(
+    public readonly uri: Uri,
+    public readonly label: TreeItemLabel,
+    public readonly description: string,
+    public readonly collapsibleState: TreeItemCollapsibleState,
+    public readonly iconPath: string | Uri | {
+      /**
+       * The icon path for the light theme.
+       */
+      light: string | Uri
+      /**
+       * The icon path for the dark theme.
+       */
+      dark: string | Uri
+    } | ThemeIcon,
+    public readonly loc: Location[],
+    public readonly filePath: string,
+    public readonly referenceDataMap?: ReferenceData,
+  ) {
+    super (uri, collapsibleState)
   }
 }
