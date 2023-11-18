@@ -2,7 +2,7 @@
   "publisher": "happiness86",
   "name": "vscode-references-plus",
   "displayName": "References Plus",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": false,
   "packageManager": "pnpm@8.10.5",
   "description": "",
@@ -77,11 +77,13 @@
       "view/title": [
         {
           "command": "references-plus.refresh",
-          "group": "navigation@1"
+          "group": "navigation@1",
+          "when": "view == references-plus"
         },
         {
           "command": "references-plus.clear",
-          "group": "navigation@2"
+          "group": "navigation@2",
+          "when": "view == references-plus"
         }
       ]
     }
