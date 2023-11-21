@@ -1,5 +1,5 @@
 import { log } from 'node:console'
-import { Selection, commands, window } from 'vscode'
+import { Selection, commands, window, workspace } from 'vscode'
 import type { ExtensionContext, Location } from 'vscode'
 import { EXT_ID } from './constants'
 import { ReferencesPlusTreeDataProvider } from './tree'
@@ -37,9 +37,12 @@ export function activate(ext: ExtensionContext) {
           else
             referenceDataMap.set(item.uri.path, [item])
         })
+
+        const document = locations[0].uri.path === window.activeTextEditor!.document.uri.path ? window.activeTextEditor!.document : await workspace.openTextDocument(locations[0].uri)
+        const text = document.getText(locations[0].range) || ''
+
         if (history.size < MAX_INDEX) {
-          // TODO  use selection as description
-          history.set({ index, text: '' }, referenceDataMap)
+          history.set({ index, text }, referenceDataMap)
           index++
         }
         else {

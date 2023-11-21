@@ -61,8 +61,11 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
     else {
       const result = []
       for (const [key, referenceDataMap] of this.referenceData) {
+        let len = 0
+        for (const iterator of referenceDataMap.values())
+          len += iterator.length
         result.push(
-          new ReferenceItemRoot({ label: `${key.index + 1}` }, key.text, TreeItemCollapsibleState.Expanded, ThemeIcon.Folder, [], '', referenceDataMap),
+          new ReferenceItemRoot({ label: `${key.index + 1}` }, `${key.text} ~ ${len} results in ${referenceDataMap.size} files`, TreeItemCollapsibleState.Expanded, ThemeIcon.Folder, [], '', referenceDataMap),
         )
       }
 
