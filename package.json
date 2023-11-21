@@ -2,7 +2,7 @@
   "publisher": "happiness86",
   "name": "vscode-references-plus",
   "displayName": "References Plus",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": false,
   "packageManager": "pnpm@8.10.5",
   "description": "",
@@ -43,12 +43,22 @@
       },
       {
         "command": "references-plus.selectNode",
-        "title": "refresh"
+        "title": "selectNode"
       },
       {
         "command": "references-plus.clear",
         "title": "clear",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "references-plus.collapseAll",
+        "title": "collapse all",
+        "icon": "$(debug-collapse-all)"
+      },
+      {
+        "command": "references-plus.expandAll",
+        "title": "expand all",
+        "icon": "$(expand-all)"
       }
     ],
     "viewsContainers": {

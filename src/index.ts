@@ -1,20 +1,21 @@
 import { log } from 'node:console'
 import { Selection, commands, window, workspace } from 'vscode'
-import type { ExtensionContext, Location } from 'vscode'
+import type { ExtensionContext, Location, TreeItemCollapsibleState } from 'vscode'
 import { EXT_ID } from './constants'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
+import { ContextKey } from './utils'
 
-const MAX_INDEX = 10
+const MAX_INDEX = 100
 
 export function activate(ext: ExtensionContext) {
   let index = 0
   const history: History = new Map()
 
   const rpTree = new ReferencesPlusTreeDataProvider(history)
-  // window.registerTreeDataProvider('references-plus', rpTree)
   window.createTreeView('references-plus', {
     treeDataProvider: rpTree,
+    showCollapseAll: true,
   })
 
   ext.subscriptions.push(
@@ -41,14 +42,13 @@ export function activate(ext: ExtensionContext) {
         const document = locations[0].uri.path === window.activeTextEditor!.document.uri.path ? window.activeTextEditor!.document : await workspace.openTextDocument(locations[0].uri)
         const text = document.getText(locations[0].range) || ''
 
-        if (history.size < MAX_INDEX) {
-          history.set({ index, text }, referenceDataMap)
-          index++
-        }
-        else {
+        if (history.size >= MAX_INDEX) {
           const keys = history.keys()
           history.delete(keys.next().value)
         }
+
+        history.set({ index, text }, referenceDataMap)
+        index++
 
         commands.executeCommand(`${EXT_ID}.refresh`)
       })
@@ -64,6 +64,7 @@ export function activate(ext: ExtensionContext) {
     }),
     commands.registerCommand(`${EXT_ID}.clear`, async () => {
       history.clear()
+      index = 0
       commands.executeCommand(`${EXT_ID}.refresh`)
     }),
   )

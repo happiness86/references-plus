@@ -4,6 +4,6 @@ export class ContextKey<T> {
   constructor(public name: string) {}
 
   async set(value: T) {
-    await commands.executeCommand('setContext', value)
+    await commands.executeCommand('setContext', this.name, value)
   }
 }
