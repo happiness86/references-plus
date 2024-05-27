@@ -2,6 +2,7 @@ import { log } from 'node:console'
 import { Selection, commands, window, workspace } from 'vscode'
 import type { ExtensionContext, Location, TreeItemCollapsibleState } from 'vscode'
 import { EXT_ID } from './constants'
+import type { ReferenceItem } from './tree'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
 import { ContextKey } from './utils'
@@ -65,6 +66,33 @@ export function activate(ext: ExtensionContext) {
     commands.registerCommand(`${EXT_ID}.clear`, async () => {
       history.clear()
       index = 0
+      commands.executeCommand(`${EXT_ID}.refresh`)
+    }),
+    commands.registerCommand(`${EXT_ID}.deleteEntry`, async (...args: ReferenceItem[]) => {
+      const referenceItem = args[0]
+      const nodeId = referenceItem.id
+      if (!nodeId)
+        return
+      const [filePath, startline, startChar, endLine, endChar] = nodeId.split('_')
+      for (const [hisKey, referenceData] of history) {
+        const locations = referenceData.get(filePath)
+        if (locations) {
+          const index = locations.findIndex(loc =>
+            loc.range.start.line === +startline
+            && loc.range.start.character === +startChar
+            && loc.range.start.line === +endLine
+            && loc.range.end.character === +endChar)
+          if (index > -1) {
+            locations.splice(index, 1)
+            if (locations.length === 0)
+              referenceData.delete(filePath)
+            if (referenceData.size === 0)
+              history.delete(hisKey)
+
+            break
+          }
+        }
+      }
       commands.executeCommand(`${EXT_ID}.refresh`)
     }),
   )

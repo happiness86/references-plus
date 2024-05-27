@@ -52,7 +52,8 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
             command: `${EXT_ID}.selectNode`,
             arguments: [l],
           }
-          contents.push(new ReferenceItem(l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, TreeItemCollapsibleState.None, ThemeIcon.File, command))
+          const id = `${l.uri.path}_${r.start.line}_${r.start.character}_${r.end.line}_${r.end.character}`
+          contents.push(new ReferenceItem(id, l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, TreeItemCollapsibleState.None, ThemeIcon.File, command))
         }
       }
 
@@ -98,8 +99,9 @@ class ReferenceItemRoot extends TreeItem {
   }
 }
 
-class ReferenceItem extends TreeItem {
+export class ReferenceItem extends TreeItem {
   constructor(
+    public readonly id: string,
     public readonly uri: Uri,
     public readonly label: TreeItemLabel,
     public readonly collapsibleState: TreeItemCollapsibleState,

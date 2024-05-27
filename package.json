@@ -56,9 +56,12 @@
         "icon": "$(debug-collapse-all)"
       },
       {
-        "command": "references-plus.expandAll",
-        "title": "expand all",
-        "icon": "$(expand-all)"
+        "command": "references-plus.deleteEntry",
+        "title": "delete",
+        "icon": {
+          "light": "res/del-light.png",
+          "dark": "res/del-dark.png"
+        }
       }
     ],
     "viewsContainers": {
@@ -94,6 +97,12 @@
           "command": "references-plus.clear",
           "group": "navigation@2",
           "when": "view == references-plus"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "references-plus.deleteEntry",
+          "group": "inline"
         }
       ]
     }
