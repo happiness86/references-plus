@@ -58,10 +58,7 @@
       {
         "command": "references-plus.deleteEntry",
         "title": "delete",
-        "icon": {
-          "light": "res/del-light.png",
-          "dark": "res/del-dark.png"
-        }
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {

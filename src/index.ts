@@ -5,9 +5,9 @@ import { EXT_ID } from './constants'
 import type { ReferenceItem } from './tree'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
-import { ContextKey } from './utils'
+import { resortHistory } from './utils'
 
-const MAX_INDEX = 100
+const MAX_INDEX = 50
 
 export function activate(ext: ExtensionContext) {
   let index = 0
@@ -29,7 +29,6 @@ export function activate(ext: ExtensionContext) {
       commands.executeCommand('vscode.executeReferenceProvider', window.activeTextEditor.document.uri, window.activeTextEditor.selection.active).then(async (res: any) => {
         const locations = res as Location[]
 
-        log('res', locations)
         const referenceDataMap: ReferenceData = new Map()
         locations.forEach((item) => {
           const cache = referenceDataMap.get(item.uri.path)
@@ -46,10 +45,12 @@ export function activate(ext: ExtensionContext) {
         if (history.size >= MAX_INDEX) {
           const keys = history.keys()
           history.delete(keys.next().value)
+          resortHistory(history)
         }
 
-        history.set({ index, text }, referenceDataMap)
-        index++
+        index = history.size
+
+        history.set({ index: index++, text }, referenceDataMap)
 
         commands.executeCommand(`${EXT_ID}.refresh`)
       })
@@ -69,27 +70,55 @@ export function activate(ext: ExtensionContext) {
       commands.executeCommand(`${EXT_ID}.refresh`)
     }),
     commands.registerCommand(`${EXT_ID}.deleteEntry`, async (...args: ReferenceItem[]) => {
+      if (!args.length)
+        return
       const referenceItem = args[0]
       const nodeId = referenceItem.id
       if (!nodeId)
         return
-      const [filePath, startline, startChar, endLine, endChar] = nodeId.split('_')
+      const nodeIds = nodeId.split('_')
+      const [filePath, startline, startChar, endLine, endChar] = nodeIds
+
       for (const [hisKey, referenceData] of history) {
-        const locations = referenceData.get(filePath)
-        if (locations) {
-          const index = locations.findIndex(loc =>
-            loc.range.start.line === +startline
+        // delete first level node
+        if (!Number.isNaN(+filePath) && hisKey.index === +filePath) {
+          history.delete(hisKey)
+          // resort history index
+          resortHistory(history)
+          break
+        }
+        else {
+          // delete second level node
+          if (nodeIds.length === 2 && hisKey.index === +startline && referenceData.has(filePath)) {
+            referenceData.delete(filePath)
+            if (referenceData.size === 0) {
+              history.delete(hisKey)
+              // resort history index
+              resortHistory(history)
+              break
+            }
+          }
+          else {
+            // delete leaf node
+            const locations = referenceData.get(filePath)
+            if (locations) {
+              const index = locations.findIndex(loc =>
+                loc.range.start.line === +startline
             && loc.range.start.character === +startChar
             && loc.range.start.line === +endLine
             && loc.range.end.character === +endChar)
-          if (index > -1) {
-            locations.splice(index, 1)
-            if (locations.length === 0)
-              referenceData.delete(filePath)
-            if (referenceData.size === 0)
-              history.delete(hisKey)
-
-            break
+              if (index > -1) {
+                locations.splice(index, 1)
+                if (locations.length === 0)
+                  referenceData.delete(filePath)
+                if (referenceData.size === 0) {
+                  history.delete(hisKey)
+                  // resort history index
+                  resortHistory(history)
+                }
+                break
+              }
+            }
           }
         }
       }
