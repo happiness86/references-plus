@@ -1,7 +1,7 @@
 import { log } from 'node:console'
 import { Selection, commands, window, workspace } from 'vscode'
 import type { ExtensionContext, Location, TreeItemCollapsibleState } from 'vscode'
-import { EXT_ID } from './constants'
+import { EXT_ID, SYMBOL } from './constants'
 import type { ReferenceItem } from './tree'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
@@ -76,12 +76,12 @@ export function activate(ext: ExtensionContext) {
       const nodeId = referenceItem.id
       if (!nodeId)
         return
-      const nodeIds = nodeId.split('_')
-      const [filePath, startline, startChar, endLine, endChar] = nodeIds
+      const nodeIds = nodeId.split(SYMBOL)
+      const [historyIndex, filePath, locIndex] = nodeIds
 
       for (const [hisKey, referenceData] of history) {
         // delete first level node
-        if (!Number.isNaN(+filePath) && hisKey.index === +filePath) {
+        if (nodeIds.length === 1 && hisKey.index === +historyIndex) {
           history.delete(hisKey)
           // resort history index
           resortHistory(history)
@@ -89,7 +89,7 @@ export function activate(ext: ExtensionContext) {
         }
         else {
           // delete second level node
-          if (nodeIds.length === 2 && hisKey.index === +startline && referenceData.has(filePath)) {
+          if (nodeIds.length === 2 && hisKey.index === +historyIndex && referenceData.has(filePath)) {
             referenceData.delete(filePath)
             if (referenceData.size === 0) {
               history.delete(hisKey)
@@ -102,13 +102,9 @@ export function activate(ext: ExtensionContext) {
             // delete leaf node
             const locations = referenceData.get(filePath)
             if (locations) {
-              const index = locations.findIndex(loc =>
-                loc.range.start.line === +startline
-            && loc.range.start.character === +startChar
-            && loc.range.start.line === +endLine
-            && loc.range.end.character === +endChar)
-              if (index > -1) {
-                locations.splice(index, 1)
+              const loc = locations[+locIndex]
+              if (loc) {
+                locations.splice(+locIndex, 1)
                 if (locations.length === 0)
                   referenceData.delete(filePath)
                 if (referenceData.size === 0) {

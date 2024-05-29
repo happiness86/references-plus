@@ -2,7 +2,7 @@ import * as path from 'node:path'
 import type { Command, Event, Location, TreeDataProvider, TreeItemLabel, Uri } from 'vscode'
 import { EventEmitter, ThemeIcon, TreeItem, TreeItemCollapsibleState, window, workspace } from 'vscode'
 import type { History, HistoryKey, ReferenceData } from './types'
-import { EXT_ID } from './constants'
+import { EXT_ID, SYMBOL } from './constants'
 
 export class ReferencesPlusTreeDataProvider implements TreeDataProvider<ReferenceItem | ReferenceItemRoot> {
   constructor(public referenceData: History) {
@@ -31,14 +31,15 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
           const prefix = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path || ''
           const description = filePath.split(prefix)[1].split(basename)[0].slice(0, -1)
 
-          const id = `${filePath}_${(element as ReferenceItemRoot).historyKey?.index}`
+          const id = `${(element as ReferenceItemRoot).historyKey?.index}${SYMBOL}${filePath}`
           contents.push(
-            new ReferenceItemRoot(id, { label: basename }, description, TreeItemCollapsibleState.Expanded, '', loc, filePath, undefined),
+            new ReferenceItemRoot(id, { label: basename }, description, TreeItemCollapsibleState.Expanded, '', loc, filePath, (element as ReferenceItemRoot).historyKey!, undefined),
           )
         }
       }
       else {
-        for (const l of element.loc!) {
+        for (let i = 0; i < element.loc!.length; i++) {
+          const l = element.loc![i]
           const r = l.range
           let text = ''
           if (element.filePath !== window.activeTextEditor?.document.uri.path) {
@@ -53,7 +54,8 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
             command: `${EXT_ID}.selectNode`,
             arguments: [l],
           }
-          const id = `${l.uri.path}_${r.start.line}_${r.start.character}_${r.end.line}_${r.end.character}`
+          // const id = `${l.uri.path}${SYMBOL}${r.start.line}${SYMBOL}${r.start.character}${SYMBOL}${r.end.line}${SYMBOL}${r.end.character}`
+          const id = `${(element as ReferenceItemRoot).historyKey!.index}${SYMBOL}${l.uri.path}${SYMBOL}${i}`
           contents.push(new ReferenceItem(id, l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, TreeItemCollapsibleState.None, ThemeIcon.File, command))
         }
       }
