@@ -1,18 +1,23 @@
 import * as path from 'node:path'
+import { log } from 'node:console'
 import type { Command, Event, Location, TreeDataProvider, TreeItemLabel, Uri } from 'vscode'
 import { EventEmitter, ThemeIcon, TreeItem, TreeItemCollapsibleState, window, workspace } from 'vscode'
 import type { History, HistoryKey, ReferenceData } from './types'
-import { EXT_ID, SYMBOL } from './constants'
+import { ConfigKey, EXT_ID } from './constants'
+import { getConfig } from './configuration'
 
 export class ReferencesPlusTreeDataProvider implements TreeDataProvider<ReferenceItem | ReferenceItemRoot> {
   constructor(public referenceData: History) {
   }
+
+  config = getConfig()
 
   private _onDidChangeTreeData: EventEmitter<void | ReferenceItem | null | undefined> = new EventEmitter<void | ReferenceItem | null | undefined>()
 
   onDidChangeTreeData?: Event<void | ReferenceItem | ReferenceItem[] | null | undefined> = this._onDidChangeTreeData.event
 
   refresh() {
+    this.config = getConfig()
     this._onDidChangeTreeData.fire(undefined)
   }
 
@@ -25,23 +30,25 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
       return
     if (element) {
       const contents = []
-      if (element.referenceDataMap) {
+      if ('referenceDataMap' in element && element.referenceDataMap) {
         for (const [filePath, loc] of element.referenceDataMap) {
           const basename = path.basename(filePath)
           const prefix = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path || ''
           const description = filePath.split(prefix)[1].split(basename)[0].slice(0, -1)
 
-          const id = `${(element as ReferenceItemRoot).historyKey?.index}${SYMBOL}${filePath}`
+          const id = [element._id, filePath] as [HistoryKey, string]
           contents.push(
-            new ReferenceItemRoot(id, { label: basename }, description, TreeItemCollapsibleState.Expanded, '', loc, filePath, (element as ReferenceItemRoot).historyKey!, undefined),
+            new ReferenceItemRoot(id, { label: basename }, description, TreeItemCollapsibleState.Expanded, '', loc, filePath),
           )
         }
       }
       else {
+        const trimWhitespace = this.config.get(ConfigKey.PW)
         for (let i = 0; i < element.loc!.length; i++) {
           const l = element.loc![i]
           const r = l.range
           let text = ''
+          const highlights: [number, number][] = []
           if (element.filePath !== window.activeTextEditor?.document.uri.path) {
             const document = await workspace.openTextDocument(element.filePath!)
             text = document.lineAt(r.start.line).text || ''
@@ -49,14 +56,25 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
           else {
             text = window.activeTextEditor?.document.lineAt(r.start.line).text || ''
           }
+
+          const highlightsText = text.slice(r.start.character, r.end.character)
+
+          if (trimWhitespace) {
+            text = text.trim()
+            const start = text.indexOf(highlightsText)
+            const end = start + highlightsText.length
+            highlights.push([start, end])
+          }
+          else {
+            highlights.push([r.start.character, r.end.character])
+          }
           const command: Command = {
             title: 'Open',
             command: `${EXT_ID}.selectNode`,
             arguments: [l],
           }
-          // const id = `${l.uri.path}${SYMBOL}${r.start.line}${SYMBOL}${r.start.character}${SYMBOL}${r.end.line}${SYMBOL}${r.end.character}`
-          const id = `${(element as ReferenceItemRoot).historyKey!.index}${SYMBOL}${l.uri.path}${SYMBOL}${i}`
-          contents.push(new ReferenceItem(id, l.uri, { label: text, highlights: [[r.start.character, r.end.character]] }, TreeItemCollapsibleState.None, ThemeIcon.File, command))
+          const id = [...(element._id as [HistoryKey, string]), i] as [HistoryKey, string, number]
+          contents.push(new ReferenceItem(id, l.uri, { label: text, highlights }, TreeItemCollapsibleState.None, ThemeIcon.File, command))
         }
       }
 
@@ -68,9 +86,9 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
         let len = 0
         for (const iterator of referenceDataMap.values())
           len += iterator.length
-
+        log('>', key.index)
         result.push(
-          new ReferenceItemRoot(`${key.index}`, { label: `${key.index + 1}` }, `${key.text} ~ ${len} results in ${referenceDataMap.size} files`, TreeItemCollapsibleState.Expanded, ThemeIcon.Folder, [], '', key, referenceDataMap),
+          new ReferenceItemRoot(key, { label: `${key.index + 1}` }, `${key.text} ~ ${len} results in ${referenceDataMap.size} files`, TreeItemCollapsibleState.Expanded, ThemeIcon.Folder, [], '', referenceDataMap),
         )
       }
 
@@ -79,9 +97,11 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
   }
 }
 
+type ReferenceItemId = HistoryKey | [HistoryKey, string] | [HistoryKey, string, number]
+
 class ReferenceItemRoot extends TreeItem {
   constructor(
-    public readonly id: string,
+    public readonly _id: ReferenceItemId,
     public readonly label: TreeItemLabel,
     public readonly description: string,
     public readonly collapsibleState: TreeItemCollapsibleState,
@@ -97,7 +117,6 @@ class ReferenceItemRoot extends TreeItem {
     } | ThemeIcon,
     public readonly loc: Location[],
     public readonly filePath: string,
-    public readonly historyKey?: HistoryKey,
     public readonly referenceDataMap?: ReferenceData,
   ) {
     super (label, collapsibleState)
@@ -106,9 +125,9 @@ class ReferenceItemRoot extends TreeItem {
 
 export class ReferenceItem extends TreeItem {
   constructor(
-    public readonly id: string,
+    public readonly _id: ReferenceItemId,
     public readonly uri: Uri,
-    public readonly label: TreeItemLabel,
+    public readonly label: TreeItemLabel | string,
     public readonly collapsibleState: TreeItemCollapsibleState,
     public readonly iconPath: string | Uri | {
       /**
@@ -123,7 +142,6 @@ export class ReferenceItem extends TreeItem {
     public command: Command,
     public readonly loc?: Location[],
     public readonly filePath?: string,
-    public readonly referenceDataMap?: ReferenceData,
   ) {
     super (uri, collapsibleState)
   }

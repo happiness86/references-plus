@@ -1,23 +1,29 @@
-import { log } from 'node:console'
 import { Selection, commands, window, workspace } from 'vscode'
-import type { ExtensionContext, Location, TreeItemCollapsibleState } from 'vscode'
-import { EXT_ID, SYMBOL } from './constants'
+import type { ExtensionContext, Location } from 'vscode'
+import { ConfigKey, EXT_ID } from './constants'
 import type { ReferenceItem } from './tree'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
 import { resortHistory } from './utils'
-
-const MAX_INDEX = 50
+import { addConfigListener, getConfig } from './configuration'
 
 export function activate(ext: ExtensionContext) {
   let index = 0
   const history: History = new Map()
+
+  const config = getConfig()
+  addConfigListener(() => {
+    if (history.size)
+      commands.executeCommand(`${EXT_ID}.refresh`)
+  })
 
   const rpTree = new ReferencesPlusTreeDataProvider(history)
   window.createTreeView('references-plus', {
     treeDataProvider: rpTree,
     showCollapseAll: true,
   })
+
+  const maxIndex: number = config.get(ConfigKey.MAX)!
 
   ext.subscriptions.push(
     commands.registerCommand(`${EXT_ID}.getAllReferences`, async () => {
@@ -42,7 +48,7 @@ export function activate(ext: ExtensionContext) {
         const document = locations[0].uri.path === window.activeTextEditor!.document.uri.path ? window.activeTextEditor!.document : await workspace.openTextDocument(locations[0].uri)
         const text = document.getText(locations[0].range) || ''
 
-        if (history.size >= MAX_INDEX) {
+        if (history.size >= maxIndex) {
           const keys = history.keys()
           history.delete(keys.next().value)
           resortHistory(history)
@@ -55,11 +61,15 @@ export function activate(ext: ExtensionContext) {
         commands.executeCommand(`${EXT_ID}.refresh`)
       })
     }),
-    commands.registerCommand(`${EXT_ID}.refresh`, () =>
-      rpTree.refresh()),
+    commands.registerCommand(`${EXT_ID}.refresh`, () => {
+      const max: number = config.get(ConfigKey.MAX)!
+
+      while (history.size > max)
+        history.delete(history.keys().next().value)
+
+      rpTree.refresh()
+    }),
     commands.registerCommand(`${EXT_ID}.selectNode`, async (loc: Location) => {
-      // const document = await workspace.openTextDocument(element[0].filePath)
-      // window.showTextDocument(document)
       commands.executeCommand('vscode.open', loc.uri, {
         selection: new Selection(loc.range.start, loc.range.end),
       })
@@ -73,48 +83,36 @@ export function activate(ext: ExtensionContext) {
       if (!args.length)
         return
       const referenceItem = args[0]
-      const nodeId = referenceItem.id
+      const nodeId = referenceItem._id
       if (!nodeId)
         return
-      const nodeIds = nodeId.split(SYMBOL)
-      const [historyIndex, filePath, locIndex] = nodeIds
-
-      for (const [hisKey, referenceData] of history) {
-        // delete first level node
-        if (nodeIds.length === 1 && hisKey.index === +historyIndex) {
-          history.delete(hisKey)
-          // resort history index
-          resortHistory(history)
-          break
-        }
-        else {
-          // delete second level node
-          if (nodeIds.length === 2 && hisKey.index === +historyIndex && referenceData.has(filePath)) {
-            referenceData.delete(filePath)
-            if (referenceData.size === 0) {
-              history.delete(hisKey)
-              // resort history index
-              resortHistory(history)
-              break
-            }
+      // root node
+      if (!Array.isArray(nodeId)) {
+        history.delete(nodeId)
+        resortHistory(history)
+      }
+      else {
+        const [hisKey, filePath, index] = nodeId
+        const referenceData = history.get(hisKey)
+        // second level
+        if (nodeId.length === 2) {
+          referenceData?.delete(filePath)
+          if (referenceData?.size === 0) {
+            history.delete(hisKey)
+            resortHistory(history)
           }
-          else {
-            // delete leaf node
-            const locations = referenceData.get(filePath)
-            if (locations) {
-              const loc = locations[+locIndex]
-              if (loc) {
-                locations.splice(+locIndex, 1)
-                if (locations.length === 0)
-                  referenceData.delete(filePath)
-                if (referenceData.size === 0) {
-                  history.delete(hisKey)
-                  // resort history index
-                  resortHistory(history)
-                }
-                break
-              }
-            }
+        }
+        // leaf node
+        else if (nodeId.length === 3) {
+          const locations = referenceData!.get(filePath)!
+          locations.splice(index!, 1)
+
+          if (locations.length === 0)
+            referenceData?.delete(filePath)
+
+          if (referenceData?.size === 0) {
+            history.delete(hisKey)
+            resortHistory(history)
           }
         }
       }

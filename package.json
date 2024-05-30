@@ -31,6 +31,20 @@
     "onStartupFinished"
   ],
   "contributes": {
+    "configuration": {
+      "properties": {
+        "references-plus.max": {
+          "type": "integer",
+          "default": 50,
+          "description": "Maximum number of historical results"
+        },
+        "references-plus.preserveWhitespace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to display blank space at the begining of leaf node"
+        }
+      }
+    },
     "commands": [
       {
         "command": "references-plus.getAllReferences",
