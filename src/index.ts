@@ -6,6 +6,7 @@ import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
 import { resortHistory } from './utils'
 import { addConfigListener, getConfig } from './configuration'
+import { AreLocationsEqual } from './utils'
 
 export function activate(ext: ExtensionContext) {
   let index = 0
@@ -35,12 +36,17 @@ export function activate(ext: ExtensionContext) {
       commands.executeCommand('vscode.executeReferenceProvider', window.activeTextEditor.document.uri, window.activeTextEditor.selection.active).then(async (res: any) => {
         const locations = res as Location[]
 
+        for (let entry of history) {
+          if (AreLocationsEqual(entry[0].FirstLocation, locations[0])){
+            return;
+          }
+        }
+
         const referenceDataMap: ReferenceData = new Map()
         locations.forEach((item) => {
           const cache = referenceDataMap.get(item.uri.path)
           if (referenceDataMap.get(item.uri.path))
             cache?.push(item)
-
           else
             referenceDataMap.set(item.uri.path, [item])
         })
@@ -56,7 +62,7 @@ export function activate(ext: ExtensionContext) {
 
         index = history.size
 
-        history.set({ index: index++, text }, referenceDataMap)
+        history.set({ index: index++, text,FirstLocation: locations[0] }, referenceDataMap)
 
         commands.executeCommand(`${EXT_ID}.refresh`)
       })
