@@ -17,7 +17,7 @@ export function resortHistory(history: History) {
     hisKey.index = index++
 }
 
-export function AreLocationsEqual(loc1: vscode.Location, loc2: vscode.Location) {
+export function areLocationsEqual(loc1: vscode.Location, loc2: vscode.Location) {
   if (loc1.uri.toString() !== loc2.uri.toString()) {
     return false;
   }
