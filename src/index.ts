@@ -37,7 +37,21 @@ export function activate(ext: ExtensionContext) {
         const locations = res as Location[]
 
         for (let entry of history) {
-          if (areLocationsEqual(entry[0].firstLocation, locations[0])){
+          if (areLocationsEqual(entry[0].firstLocation, locations[0])) {
+
+            const rootItems = await rpTree.getChildren(void 0)
+            if (rootItems == null || rootItems.length === 0) {
+              window.showInformationMessage("error: rootItems is null or empty")
+              return
+            }
+            
+            for (const rootItem of rootItems) {
+              //  rootItem.label to object
+              const dupIndex = (entry[0].index + 1).toString()
+              if (typeof rootItem.label === 'object' && rootItem.label.label === dupIndex) {
+                window.showInformationMessage("The references have been added to the tree view.")
+              }
+            }
             return;
           }
         }
