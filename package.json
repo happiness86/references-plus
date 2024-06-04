@@ -42,6 +42,16 @@
           "type": "boolean",
           "default": true,
           "description": "Whether to display blank space at the begining of leaf node"
+        },
+        "references-plus.silent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to push notification when search again"
+        },
+        "references-plus.replenish": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to replenish the deleted data when search again"
         }
       }
     },

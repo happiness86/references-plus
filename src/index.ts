@@ -4,18 +4,19 @@ import { ConfigKey, EXT_ID } from './constants'
 import type { ReferenceItem } from './tree'
 import { ReferencesPlusTreeDataProvider } from './tree'
 import type { History, ReferenceData } from './types'
-import { resortHistory } from './utils'
+import { areLocationsEqual, resortHistory } from './utils'
 import { addConfigListener, getConfig } from './configuration'
-import { areLocationsEqual } from './utils'
 
 export function activate(ext: ExtensionContext) {
   let index = 0
   const history: History = new Map()
 
-  const config = getConfig()
+  let config = getConfig()
   addConfigListener(() => {
-    if (history.size)
+    if (history.size) {
+      config = getConfig()
       commands.executeCommand(`${EXT_ID}.refresh`)
+    }
   })
 
   const rpTree = new ReferencesPlusTreeDataProvider(history)
@@ -23,8 +24,6 @@ export function activate(ext: ExtensionContext) {
     treeDataProvider: rpTree,
     showCollapseAll: true,
   })
-
-  const maxIndex: number = config.get(ConfigKey.MAX)!
 
   ext.subscriptions.push(
     commands.registerCommand(`${EXT_ID}.getAllReferences`, async () => {
@@ -36,47 +35,66 @@ export function activate(ext: ExtensionContext) {
       commands.executeCommand('vscode.executeReferenceProvider', window.activeTextEditor.document.uri, window.activeTextEditor.selection.active).then(async (res: any) => {
         const locations = res as Location[]
 
-        for (let entry of history) {
-          if (areLocationsEqual(entry[0].firstLocation, locations[0])) {
+        let flag = false
 
-            const rootItems = await rpTree.getChildren(void 0)
-            if (rootItems == null || rootItems.length === 0) {
-              window.showInformationMessage("error: rootItems is null or empty")
-              return
+        const silent = config.get(ConfigKey.SILENT)
+        const replenish = config.get(ConfigKey.REPLENISH)
+
+        for (const [hisKey, refsMap] of history) {
+          if (areLocationsEqual(hisKey.firstLocation, locations[0])) {
+            if (!silent) {
+              const index = hisKey.index + 1
+              window.showInformationMessage(`The references have been added to the tree view at ${index > 3 ? `${index}th` : `${index}st`}`)
             }
-            
-            for (const rootItem of rootItems) {
-              //  rootItem.label to object
-              const dupIndex = (entry[0].index + 1).toString()
-              if (typeof rootItem.label === 'object' && rootItem.label.label === dupIndex) {
-                window.showInformationMessage("The references have been added to the tree view.")
+
+            if (replenish) {
+              let len = 0
+              for (const iterator of refsMap.values())
+                len += iterator.length
+
+              if (len !== locations.length) {
+                locations.forEach((item) => {
+                  const cache = refsMap.get(item.uri.path)
+                  if (refsMap.get(item.uri.path)) {
+                    const isExist = cache?.find(c => areLocationsEqual(c, item))
+                    if (!isExist)
+                      cache?.push(item)
+                  }
+                  else {
+                    refsMap.set(item.uri.path, [item])
+                  }
+                })
               }
             }
-            return;
+
+            flag = true
+            break
           }
         }
 
-        const referenceDataMap: ReferenceData = new Map()
-        locations.forEach((item) => {
-          const cache = referenceDataMap.get(item.uri.path)
-          if (referenceDataMap.get(item.uri.path))
-            cache?.push(item)
-          else
-            referenceDataMap.set(item.uri.path, [item])
-        })
+        if (!flag) {
+          const referenceDataMap: ReferenceData = new Map()
+          locations.forEach((item) => {
+            const cache = referenceDataMap.get(item.uri.path)
+            if (referenceDataMap.get(item.uri.path))
+              cache?.push(item)
+            else
+              referenceDataMap.set(item.uri.path, [item])
+          })
 
-        const document = locations[0].uri.path === window.activeTextEditor!.document.uri.path ? window.activeTextEditor!.document : await workspace.openTextDocument(locations[0].uri)
-        const text = document.getText(locations[0].range) || ''
+          const document = locations[0].uri.path === window.activeTextEditor!.document.uri.path ? window.activeTextEditor!.document : await workspace.openTextDocument(locations[0].uri)
+          const text = document.getText(locations[0].range) || ''
 
-        if (history.size >= maxIndex) {
-          const keys = history.keys()
-          history.delete(keys.next().value)
-          resortHistory(history)
+          if (history.size >= (config.get(ConfigKey.MAX) as number)) {
+            const keys = history.keys()
+            history.delete(keys.next().value)
+            resortHistory(history)
+          }
+
+          index = history.size
+
+          history.set({ index: index++, text, firstLocation: locations[0] }, referenceDataMap)
         }
-
-        index = history.size
-
-        history.set({ index: index++, text,firstLocation: locations[0] }, referenceDataMap)
 
         commands.executeCommand(`${EXT_ID}.refresh`)
       })
