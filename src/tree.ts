@@ -18,7 +18,7 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
 
   refresh() {
     this.config = getConfig()
-    this._onDidChangeTreeData.fire(undefined)
+    this._onDidChangeTreeData.fire()
   }
 
   getTreeItem(element: ReferenceItem): ReferenceItem {
@@ -43,7 +43,7 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
 
           const id = [element._id, filePath] as [HistoryKey, string]
           contents.push(
-            new ReferenceItemRoot(id, { label: basename }, description, TreeItemCollapsibleState.Expanded, '', loc, filePath),
+            new ReferenceItemRoot(id, { label: basename }, description || '', TreeItemCollapsibleState.Expanded, '', loc, filePath),
           )
         }
       }
@@ -91,11 +91,15 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
         let len = 0
         for (const iterator of referenceDataMap.values())
           len += iterator.length
+
+        // 最后一个展开，默认收起
+        const isLast: boolean = result.length === this.referenceData.size - 1
+
         result.push(
-          new ReferenceItemRoot(key, { label: `${key.index + 1}` }, `${key.text} ~ ${len} results in ${referenceDataMap.size} files`, TreeItemCollapsibleState.Expanded, ThemeIcon.Folder, [], '', referenceDataMap),
+          new ReferenceItemRoot(key, { label: `${key.index + 1}` }, `${key.text} ~ ${len} results in ${referenceDataMap.size} files`, isLast ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.Collapsed, ThemeIcon.Folder, [], '', referenceDataMap),
         )
       }
-
+      log('result=====', result)
       return result
     }
   }

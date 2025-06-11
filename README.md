@@ -1,6 +1,6 @@
 # Reference Plus
 
-> `Reference Plus` can preserve history results.
+> `Reference Plus` can preserve historical reference results.
 
 ## Usage
 

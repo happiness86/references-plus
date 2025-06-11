@@ -46,12 +46,12 @@
         "references-plus.silent": {
           "type": "boolean",
           "default": false,
-          "description": "Whether to push notification when search again"
+          "description": "Whether to push notification when search the same target again"
         },
         "references-plus.replenish": {
           "type": "boolean",
           "default": false,
-          "description": "Whether to replenish the deleted data when search again"
+          "description": "Whether to replenish the deleted data when search the same target again"
         }
       }
     },

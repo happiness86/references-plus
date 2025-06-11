@@ -87,7 +87,7 @@ export function activate(ext: ExtensionContext) {
 
           if (history.size >= (config.get(ConfigKey.MAX) as number)) {
             const keys = history.keys()
-            history.delete(keys.next().value)
+            history.delete(keys.next().value!)
             resortHistory(history)
           }
 
@@ -103,7 +103,7 @@ export function activate(ext: ExtensionContext) {
       const max: number = config.get(ConfigKey.MAX)!
 
       while (history.size > max)
-        history.delete(history.keys().next().value)
+        history.delete(history.keys().next().value!)
 
       rpTree.refresh()
     }),
