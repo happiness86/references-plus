@@ -33,8 +33,13 @@ export class ReferencesPlusTreeDataProvider implements TreeDataProvider<Referenc
       if ('referenceDataMap' in element && element.referenceDataMap) {
         for (const [filePath, loc] of element.referenceDataMap) {
           const basename = path.basename(filePath)
-          const prefix = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path || ''
-          const description = filePath.split(prefix)[1].split(basename)[0].slice(0, -1)
+          const workspaceFolder = workspace.getWorkspaceFolder(loc[0].uri)?.uri.path
+          let description
+          if (workspaceFolder)
+            description = path.relative(workspaceFolder, filePath)
+          else
+            description = filePath
+          description = path.dirname(description)
 
           const id = [element._id, filePath] as [HistoryKey, string]
           contents.push(
